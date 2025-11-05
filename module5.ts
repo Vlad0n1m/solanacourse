@@ -1,4 +1,5 @@
 import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
+import type {GetProgramAccountsConfig} from "@solana/web3.js"
 import * as borsh from "@project-serum/borsh"
 // const programId = new PublicKey("CenYq6bDRB7p73EjsPEpiYN7uveyPUTdXkDkgUduboaN")
 // const [pda, bump] = PublicKey.findProgramAddressSync([Buffer.from("GLOBAL_STATE")], programId);
@@ -18,20 +19,25 @@ const movieAccountSchema = borsh.struct([
 ]);
 
 async function getAllRecords() {
+    const config: GetProgramAccountsConfig = {
+        dataSlice: {offset: 0, length: 0}
+    }
     const connection = new Connection(clusterApiUrl('devnet'))
-    const accounts = await connection.getProgramAccounts(MOVIE_REVIEW_PROGRAM_ID)
-    for (const account of accounts) {
+    const accounts = await connection.getProgramAccounts(MOVIE_REVIEW_PROGRAM_ID, config)
+    const paginatedKeys = accounts.slice(0,10).map(acc => acc.pubkey)
+    const accountsInfos = await connection.getMultipleAccountsInfo(paginatedKeys)
+    for (const account of accountsInfos) {
         try {
-            const data = account.account.data;
-            if (data.length < 5) continue; 
-
-            const decoded = movieAccountSchema.decode(data);
-            console.log('Pubkey:', account.pubkey.toBase58());
+            if (!account) continue;
+            if (account && account.data.length < 5) continue; 
+            const decoded = movieAccountSchema.decode(account.data);
             console.log(decoded);
         } catch (err) {
 
         }
     }
+
+    
 }
 getAllRecords();
 // console.log(pda2.toBase58())
